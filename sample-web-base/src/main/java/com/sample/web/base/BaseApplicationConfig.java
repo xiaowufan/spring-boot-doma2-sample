@@ -5,13 +5,12 @@ import static com.sample.web.base.WebConst.*;
 import java.util.Arrays;
 import java.util.List;
 
-import com.sample.web.base.filter.CheckOverflowFilter;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.embedded.ConfigurableEmbeddedServletContainer;
-import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomizer;
-import org.springframework.boot.web.servlet.ErrorPage;
+import org.springframework.boot.web.server.ErrorPage;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.ehcache.EhCacheCacheManager;
 import org.springframework.cache.ehcache.EhCacheManagerFactoryBean;
@@ -33,7 +32,7 @@ import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.CookieLocaleResolver;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
 
@@ -45,20 +44,20 @@ import com.sample.web.base.controller.LocalDateConverter;
 import com.sample.web.base.controller.LocalDateTimeConverter;
 import com.sample.web.base.controller.api.resource.DefaultResourceFactoryImpl;
 import com.sample.web.base.controller.api.resource.ResourceFactory;
+import com.sample.web.base.filter.CheckOverflowFilter;
 import com.sample.web.base.filter.ClearMDCFilter;
-import com.sample.web.base.filter.CustomCharacterEncodingFilter;
 import com.sample.web.base.filter.LoginUserTrackingFilter;
-import com.sample.web.base.helper.DeviceHelper;
 import com.sample.web.base.security.authorization.DefaultPermissionKeyResolver;
 import com.sample.web.base.security.authorization.PermissionKeyResolver;
 
 import lombok.val;
+import nz.net.ultraq.thymeleaf.LayoutDialect;
 
 /**
  * 基底アプリケーション設定
  */
-public abstract class BaseApplicationConfig extends WebMvcConfigurerAdapter
-        implements EmbeddedServletContainerCustomizer {
+public abstract class BaseApplicationConfig
+        implements WebServerFactoryCustomizer<ConfigurableServletWebServerFactory>, WebMvcConfigurer {
 
     @Value("${application.cors.allowCredentials:true}")
     Boolean allowCredentials;
@@ -76,7 +75,7 @@ public abstract class BaseApplicationConfig extends WebMvcConfigurerAdapter
     Long maxAge;
 
     @Override
-    public void customize(ConfigurableEmbeddedServletContainer container) {
+    public void customize(ConfigurableServletWebServerFactory container) {
         container.addErrorPages(new ErrorPage(HttpStatus.NOT_FOUND, NOTFOUND_URL));
         container.addErrorPages(new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, ERROR_URL));
     }
@@ -112,24 +111,6 @@ public abstract class BaseApplicationConfig extends WebMvcConfigurerAdapter
     public ShallowEtagHeaderFilter shallowEtagHeaderFilter() {
         // ETagの制御を行う
         return new ShallowEtagHeaderFilter();
-    }
-
-    @Bean
-    public DeviceHelper deviceHelper() {
-        // デバイス判定ヘルパーをCustomCharacterEncodingFilterで使用する
-        return new DeviceHelper();
-    }
-
-    @Bean
-    public CustomCharacterEncodingFilter characterEncodingFilter() {
-        val filter = new CustomCharacterEncodingFilter();
-        filter.setCallback((request, customCharacterEncodingFilter) -> {
-            // ガラケーでは文字コードをSJISに変換する
-            if (deviceHelper().determineDevice(request) == DeviceHelper.DEVICE.FP) {
-                customCharacterEncodingFilter.setEncoding("Shift_JIS");
-            }
-        });
-        return filter;
     }
 
     @Bean
@@ -202,6 +183,11 @@ public abstract class BaseApplicationConfig extends WebMvcConfigurerAdapter
         val bean = new LocalValidatorFactoryBean();
         bean.setValidationMessageSource(messageSource);
         return bean;
+    }
+
+    @Bean
+    public LayoutDialect layoutDialect() {
+        return new LayoutDialect();
     }
 
     @Bean

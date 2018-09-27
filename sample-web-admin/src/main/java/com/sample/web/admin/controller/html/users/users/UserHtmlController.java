@@ -301,12 +301,9 @@ public class UserHtmlController extends AbstractHtmlController {
     public ModelAndView downloadExcel(@PathVariable String filename) {
         // 全件取得する
         val users = userService.findAll(new User(), Pageable.NO_LIMIT);
-        val view = new ExcelView(filename, new UserExcel());
+        val view = new ExcelView(filename, new UserExcel(), users.getData());
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("data", users.getData());
-
-        return new ModelAndView(view, params);
+        return new ModelAndView(view);
     }
 
     /**
@@ -320,11 +317,8 @@ public class UserHtmlController extends AbstractHtmlController {
         // 全件取得する
         val users = userService.findAll(new User(), Pageable.NO_LIMIT);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put("data", users.getData());
+        val view = new PdfView("reports/users.jrxml", users.getData(), filename);
 
-        val view = new PdfView("reports/users.jrxml", filename);
-
-        return new ModelAndView(view, params);
+        return new ModelAndView(view);
     }
 }
